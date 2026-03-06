@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MySQL Command Finder</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --surface: #111827;
+    --card: #1a2235;
+    --accent: #00d4ff;
+    --accent2: #ff6b35;
+    --green: #00ff88;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --border: #1e3a5f;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Animated background grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .glow-orb {
+    position: fixed;
+    width: 600px;
+    height: 600px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(0,212,255,0.06) 0%, transparent 70%);
+    top: -200px;
+    right: -200px;
+    pointer-events: none;
+    z-index: 0;
+    animation: drift 8s ease-in-out infinite alternate;
+  }
+
+  @keyframes drift {
+    from { transform: translate(0, 0); }
+    to { transform: translate(-50px, 80px); }
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 40px 20px;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 50px;
+    animation: fadeDown 0.6s ease forwards;
+  }
+
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .logo-icon {
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    box-shadow: 0 0 30px rgba(0,212,255,0.3);
+  }
+
+  h1 {
+    font-size: clamp(2rem, 5vw, 3.2rem);
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--accent) 0%, #fff 50%, var(--accent2) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1.1;
+  }
+
+  .subtitle {
+    color: var(--muted);
+    font-size: 1rem;
+    margin-top: 8px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* Search */
+  .search-wrap {
+    position: relative;
+    margin-bottom: 16px;
+    animation: fadeDown 0.6s 0.1s ease both;
+  }
+
+  .search-icon {
+    position: absolute;
+    left: 18px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 18px;
+    color: var(--accent);
+  }
+
+  #search {
+    width: 100%;
+    padding: 18px 18px 18px 52px;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 14px;
+    color: var(--text);
+    font-size: 1.05rem;
+    font-family: 'Syne', sans-serif;
+    outline: none;
+    transition: all 0.3s;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  }
+
+  #search:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(0,212,255,0.1), 0 4px 20px rgba(0,0,0,0.3);
+  }
+
+  #search::placeholder { color: var(--muted); }
+
+  /* Tags */
+  .tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 36px;
+    animation: fadeDown 0.6s 0.2s ease both;
+  }
+
+  .tag {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-family: 'JetBrains Mono', monospace;
+    cursor: pointer;
+    border: 1.5px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    transition: all 0.2s;
+  }
+
+  .tag:hover, .tag.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(0,212,255,0.08);
+  }
+
+  /* Results count */
+  .results-info {
+    font-size: 0.85rem;
+    color: var(--muted);
+    margin-bottom: 16px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .results-info span { color: var(--accent); }
+
+  /* Cards */
+  .cards {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .card {
+    background: var(--card);
+    border: 1.5px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    transition: all 0.3s;
+    animation: fadeUp 0.4s ease both;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(0,212,255,0.1);
+  }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    cursor: pointer;
+    gap: 12px;
+  }
+
+  .card-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .card-badge {
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+  }
+
+  .badge-crud { background: rgba(0,255,136,0.15); color: var(--green); }
+  .badge-filter { background: rgba(0,212,255,0.15); color: var(--accent); }
+  .badge-join { background: rgba(255,107,53,0.15); color: var(--accent2); }
+  .badge-aggregate { background: rgba(168,85,247,0.15); color: #a855f7; }
+  .badge-alter { background: rgba(251,191,36,0.15); color: #fbbf24; }
+  .badge-advanced { background: rgba(236,72,153,0.15); color: #ec4899; }
+
+  .card-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .card-desc {
+    font-size: 0.85rem;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  .card-arrow {
+    color: var(--muted);
+    font-size: 18px;
+    transition: transform 0.3s;
+    flex-shrink: 0;
+  }
+
+  .card.open .card-arrow { transform: rotate(180deg); color: var(--accent); }
+
+  .card-body {
+    display: none;
+    padding: 0 20px 20px;
+    border-top: 1px solid var(--border);
+  }
+
+  .card.open .card-body { display: block; }
+
+  .code-block {
+    position: relative;
+    margin-top: 16px;
+    background: #0d1117;
+    border-radius: 10px;
+    border: 1px solid #1e3a5f;
+    overflow: hidden;
+  }
+
+  .code-label {
+    padding: 8px 14px;
+    font-size: 0.72rem;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--muted);
+    background: rgba(255,255,255,0.02);
+    border-bottom: 1px solid #1e3a5f;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .copy-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 3px 10px;
+    border-radius: 5px;
+    font-size: 0.7rem;
+    font-family: 'JetBrains Mono', monospace;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .copy-btn.copied { border-color: var(--green); color: var(--green); }
+
+  pre {
+    padding: 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    line-height: 1.7;
+    overflow-x: auto;
+    color: #cdd9e5;
+  }
+
+  .kw { color: #ff79c6; }
+  .fn { color: #50fa7b; }
+  .str { color: #f1fa8c; }
+  .cm { color: #6272a4; font-style: italic; }
+  .num { color: #bd93f9; }
+  .tbl { color: #8be9fd; }
+
+  /* No results */
+  .no-results {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--muted);
+    display: none;
+  }
+
+  .no-results .emoji { font-size: 3rem; margin-bottom: 12px; }
+  .no-results p { font-family: 'JetBrains Mono', monospace; }
+
+  footer {
+    text-align: center;
+    margin-top: 60px;
+    color: var(--muted);
+    font-size: 0.8rem;
+    font-family: 'JetBrains Mono', monospace;
+    animation: fadeDown 0.6s 0.4s ease both;
+  }
+
+  /* 📱 Mobile Responsive */
+  @media (max-width: 600px) {
+    .container { padding: 24px 14px; }
+
+    h1 { font-size: 1.8rem; }
+    .subtitle { font-size: 0.78rem; }
+
+    .logo-icon { width: 38px; height: 38px; font-size: 18px; }
+
+    #search { font-size: 0.95rem; padding: 14px 14px 14px 44px; }
+
+    .tags { gap: 6px; }
+    .tag { font-size: 0.72rem; padding: 5px 10px; }
+
+    .card-header { padding: 12px 14px; gap: 8px; }
+    .card-title { font-size: 0.9rem; }
+    .card-desc { font-size: 0.78rem; }
+    .card-badge { font-size: 0.62rem; padding: 3px 7px; }
+    .card-arrow { font-size: 14px; }
+
+    .card-body { padding: 0 14px 14px; }
+
+    pre { font-size: 0.75rem; padding: 12px; }
+    .code-label { font-size: 0.68rem; padding: 6px 12px; }
+    .copy-btn { font-size: 0.65rem; padding: 3px 8px; }
+
+    .no-results { padding: 40px 14px; }
+    .no-results .emoji { font-size: 2rem; }
+
+    footer { font-size: 0.72rem; margin-top: 40px; }
+  }
+</style>
+</head>
+<body>
+<div class="glow-orb"></div>
+<div class="container">
+  <header>
+    <div class="logo">
+      <div class="logo-icon">🐬</div>
+    </div>
+    <h1>MySQL Command Finder By KARTHIK K ANVEKAR</h1>
+    <p class="subtitle">// search any operation → get the command instantly</p>
+  </header>
+
+  <div class="search-wrap">
+    <span class="search-icon">🔍</span>
+    <input type="text" id="search" placeholder="Search: insert, join, delete, group by..." autocomplete="off">
+  </div>
+
+  <div class="tags">
+    <button class="tag active" onclick="filterTag('all', this)">All</button>
+    <button class="tag" onclick="filterTag('crud', this)">CRUD</button>
+    <button class="tag" onclick="filterTag('filter', this)">Filter</button>
+    <button class="tag" onclick="filterTag('join', this)">JOIN</button>
+    <button class="tag" onclick="filterTag('aggregate', this)">Aggregate</button>
+    <button class="tag" onclick="filterTag('alter', this)">Alter Table</button>
+    <button class="tag" onclick="filterTag('advanced', this)">Advanced</button>
+  </div>
+
+  <div class="results-info" id="resultsInfo"></div>
+
+  <div class="cards" id="cards"></div>
+  <div class="no-results" id="noResults">
+    <div class="emoji">🤔</div>
+    <p>No commands found for "<span id="noQuery"></span>"</p>
+  </div>
+
+  <footer>Built by ISE student - 2026 </footer>
+</div>
+
+<script>
+const commands = [
+  {
+    title: "Create Database",
+    desc: "Create a new database",
+    category: "crud",
+    keywords: ["create", "database", "new", "make"],
+    code: `<span class="kw">CREATE DATABASE</span> <span class="tbl">mydb</span>;
+<span class="kw">USE</span> <span class="tbl">mydb</span>;`
+  },
+  {
+    title: "Create Table",
+    desc: "Create a new table with columns",
+    category: "crud",
+    keywords: ["create", "table", "new", "columns", "schema"],
+    code: `<span class="kw">CREATE TABLE</span> <span class="tbl">students</span> (
+  id    <span class="fn">INT</span> <span class="kw">AUTO_INCREMENT PRIMARY KEY</span>,
+  name  <span class="fn">VARCHAR</span>(<span class="num">100</span>),
+  age   <span class="fn">INT</span>,
+  city  <span class="fn">VARCHAR</span>(<span class="num">100</span>)
+);`
+  },
+  {
+    title: "INSERT — Add Data",
+    desc: "Insert a new row into a table",
+    category: "crud",
+    keywords: ["insert", "add", "create", "row", "data", "new record"],
+    code: `<span class="kw">INSERT INTO</span> <span class="tbl">students</span> (name, age, city)
+<span class="kw">VALUES</span> (<span class="str">'John'</span>, <span class="num">20</span>, <span class="str">'New York'</span>);
+
+<span class="cm">-- Insert multiple rows at once</span>
+<span class="kw">INSERT INTO</span> <span class="tbl">students</span> (name, age, city) <span class="kw">VALUES</span>
+(<span class="str">'Alice'</span>, <span class="num">22</span>, <span class="str">'London'</span>),
+(<span class="str">'Bob'</span>, <span class="num">19</span>, <span class="str">'Paris'</span>);`
+  },
+  {
+    title: "SELECT — Read Data",
+    desc: "Retrieve data from a table",
+    category: "crud",
+    keywords: ["select", "read", "get", "fetch", "show", "view", "all"],
+    code: `<span class="cm">-- Get all rows</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">students</span>;
+
+<span class="cm">-- Get specific columns</span>
+<span class="kw">SELECT</span> name, age <span class="kw">FROM</span> <span class="tbl">students</span>;
+
+<span class="cm">-- Get with condition</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">students</span> <span class="kw">WHERE</span> age > <span class="num">18</span>;`
+  },
+  {
+    title: "UPDATE — Edit Data",
+    desc: "Update existing rows in a table",
+    category: "crud",
+    keywords: ["update", "edit", "modify", "change", "set"],
+    code: `<span class="cm">-- Update a specific row</span>
+<span class="kw">UPDATE</span> <span class="tbl">students</span>
+<span class="kw">SET</span> age = <span class="num">21</span>, city = <span class="str">'Chicago'</span>
+<span class="kw">WHERE</span> name = <span class="str">'John'</span>;
+
+<span class="cm">-- ⚠️ Without WHERE, updates ALL rows!</span>`
+  },
+  {
+    title: "DELETE — Remove Data",
+    desc: "Delete rows from a table",
+    category: "crud",
+    keywords: ["delete", "remove", "drop row", "erase"],
+    code: `<span class="cm">-- Delete specific row</span>
+<span class="kw">DELETE FROM</span> <span class="tbl">students</span> <span class="kw">WHERE</span> name = <span class="str">'John'</span>;
+
+<span class="cm">-- Delete all rows (keeps table structure)</span>
+<span class="kw">DELETE FROM</span> <span class="tbl">students</span>;
+
+<span class="cm">-- Drop entire table</span>
+<span class="kw">DROP TABLE</span> <span class="tbl">students</span>;`
+  },
+  {
+    title: "WHERE — Filter Rows",
+    desc: "Filter results with conditions",
+    category: "filter",
+    keywords: ["where", "filter", "condition", "find", "search"],
+    code: `<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">students</span> <span class="kw">WHERE</span> age = <span class="num">20</span>;
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">students</span> <span class="kw">WHERE</span> age > <span class="num">18</span>;
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">students</span> <span class="kw">WHERE</span> age <span class="kw">BETWEEN</span> <span class="num">18</span> <span class="kw">AND</span> <span class="num">25</span>;
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">students</span> <span class="kw">WHERE</span> city <span class="kw">IN</span> (<span class="str">'London'</span>, <span class="str">'Paris'</span>);
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">students</span> <span class="kw">WHERE</span> name <span class="kw">IS NOT NULL</span>;`
+  },
+  {
+    title: "LIKE — Pattern Search",
+    desc: "Search with wildcard patterns",
+    category: "filter",
+    keywords: ["like", "pattern", "search", "wildcard", "contains", "starts", "ends"],
+    code: `<span class="cm">-- Names starting with 'J'</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">students</span> <span class="kw">WHERE</span> name <span class="kw">LIKE</span> <span class="str">'J%'</span>;
+
+<span class="cm">-- Names ending with 'n'</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">students</span> <span class="kw">WHERE</span> name <span class="kw">LIKE</span> <span class="str">'%n'</span>;
+
+<span class="cm">-- Names containing 'oh'</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">students</span> <span class="kw">WHERE</span> name <span class="kw">LIKE</span> <span class="str">'%oh%'</span>;`
+  },
+  {
+    title: "ORDER BY — Sort Results",
+    desc: "Sort results ascending or descending",
+    category: "filter",
+    keywords: ["order", "sort", "asc", "desc", "ascending", "descending"],
+    code: `<span class="cm">-- Sort by age low to high</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">students</span> <span class="kw">ORDER BY</span> age <span class="kw">ASC</span>;
+
+<span class="cm">-- Sort by age high to low</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">students</span> <span class="kw">ORDER BY</span> age <span class="kw">DESC</span>;
+
+<span class="cm">-- Sort by multiple columns</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">students</span> <span class="kw">ORDER BY</span> city <span class="kw">ASC</span>, age <span class="kw">DESC</span>;`
+  },
+  {
+    title: "LIMIT — Limit Rows",
+    desc: "Return only a specific number of rows",
+    category: "filter",
+    keywords: ["limit", "top", "first", "pagination", "rows"],
+    code: `<span class="cm">-- Get first 5 rows</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">students</span> <span class="kw">LIMIT</span> <span class="num">5</span>;
+
+<span class="cm">-- Pagination: skip 10, get next 5</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">students</span> <span class="kw">LIMIT</span> <span class="num">5</span> <span class="kw">OFFSET</span> <span class="num">10</span>;`
+  },
+  {
+    title: "DISTINCT — Unique Values",
+    desc: "Remove duplicate values from results",
+    category: "filter",
+    keywords: ["distinct", "unique", "duplicate", "different"],
+    code: `<span class="cm">-- Get unique cities</span>
+<span class="kw">SELECT DISTINCT</span> city <span class="kw">FROM</span> <span class="tbl">students</span>;
+
+<span class="cm">-- Count unique cities</span>
+<span class="kw">SELECT COUNT</span>(<span class="kw">DISTINCT</span> city) <span class="kw">FROM</span> <span class="tbl">students</span>;`
+  },
+  {
+    title: "INNER JOIN",
+    desc: "Return rows that match in both tables",
+    category: "join",
+    keywords: ["inner join", "join", "combine", "merge", "tables", "match"],
+    code: `<span class="kw">SELECT</span> s.name, c.course_name
+<span class="kw">FROM</span> <span class="tbl">students</span> s
+<span class="kw">INNER JOIN</span> <span class="tbl">courses</span> c
+  <span class="kw">ON</span> s.id = c.student_id;
+
+<span class="cm">-- Only returns rows where both tables match</span>`
+  },
+  {
+    title: "LEFT JOIN",
+    desc: "Return all rows from left table + matches from right",
+    category: "join",
+    keywords: ["left join", "left", "join", "all rows", "null"],
+    code: `<span class="kw">SELECT</span> s.name, c.course_name
+<span class="kw">FROM</span> <span class="tbl">students</span> s
+<span class="kw">LEFT JOIN</span> <span class="tbl">courses</span> c
+  <span class="kw">ON</span> s.id = c.student_id;
+
+<span class="cm">-- Returns ALL students, even those with no course (NULL)</span>`
+  },
+  {
+    title: "RIGHT JOIN",
+    desc: "Return all rows from right table + matches from left",
+    category: "join",
+    keywords: ["right join", "right", "join"],
+    code: `<span class="kw">SELECT</span> s.name, c.course_name
+<span class="kw">FROM</span> <span class="tbl">students</span> s
+<span class="kw">RIGHT JOIN</span> <span class="tbl">courses</span> c
+  <span class="kw">ON</span> s.id = c.student_id;
+
+<span class="cm">-- Returns ALL courses, even those with no student</span>`
+  },
+  {
+    title: "COUNT, SUM, AVG",
+    desc: "Count rows or calculate totals and averages",
+    category: "aggregate",
+    keywords: ["count", "sum", "average", "avg", "total", "aggregate"],
+    code: `<span class="kw">SELECT COUNT</span>(*) <span class="kw">FROM</span> <span class="tbl">students</span>;         <span class="cm">-- total rows</span>
+<span class="kw">SELECT SUM</span>(age) <span class="kw">FROM</span> <span class="tbl">students</span>;         <span class="cm">-- sum of ages</span>
+<span class="kw">SELECT AVG</span>(age) <span class="kw">FROM</span> <span class="tbl">students</span>;         <span class="cm">-- average age</span>
+<span class="kw">SELECT MAX</span>(age) <span class="kw">FROM</span> <span class="tbl">students</span>;         <span class="cm">-- highest age</span>
+<span class="kw">SELECT MIN</span>(age) <span class="kw">FROM</span> <span class="tbl">students</span>;         <span class="cm">-- lowest age</span>`
+  },
+  {
+    title: "GROUP BY",
+    desc: "Group rows and apply aggregate functions",
+    category: "aggregate",
+    keywords: ["group by", "group", "aggregate", "count per", "sum per"],
+    code: `<span class="cm">-- Count students per city</span>
+<span class="kw">SELECT</span> city, <span class="fn">COUNT</span>(*) <span class="kw">AS</span> total
+<span class="kw">FROM</span> <span class="tbl">students</span>
+<span class="kw">GROUP BY</span> city;
+
+<span class="cm">-- Average age per city</span>
+<span class="kw">SELECT</span> city, <span class="fn">AVG</span>(age) <span class="kw">AS</span> avg_age
+<span class="kw">FROM</span> <span class="tbl">students</span>
+<span class="kw">GROUP BY</span> city
+<span class="kw">HAVING</span> avg_age > <span class="num">20</span>;`
+  },
+  {
+    title: "ALTER TABLE",
+    desc: "Add, remove, or modify columns in a table",
+    category: "alter",
+    keywords: ["alter", "add column", "drop column", "modify", "rename", "change"],
+    code: `<span class="cm">-- Add a new column</span>
+<span class="kw">ALTER TABLE</span> <span class="tbl">students</span> <span class="kw">ADD</span> email <span class="fn">VARCHAR</span>(<span class="num">100</span>);
+
+<span class="cm">-- Remove a column</span>
+<span class="kw">ALTER TABLE</span> <span class="tbl">students</span> <span class="kw">DROP COLUMN</span> email;
+
+<span class="cm">-- Change column data type</span>
+<span class="kw">ALTER TABLE</span> <span class="tbl">students</span> <span class="kw">MODIFY</span> age <span class="fn">FLOAT</span>;
+
+<span class="cm">-- Rename a column</span>
+<span class="kw">ALTER TABLE</span> <span class="tbl">students</span> <span class="kw">RENAME COLUMN</span> age <span class="kw">TO</span> student_age;`
+  },
+  {
+    title: "Constraints",
+    desc: "Add rules to columns like NOT NULL, UNIQUE, CHECK",
+    category: "alter",
+    keywords: ["constraint", "not null", "unique", "default", "check", "primary key", "foreign key"],
+    code: `<span class="kw">CREATE TABLE</span> <span class="tbl">employees</span> (
+  id      <span class="fn">INT</span> <span class="kw">PRIMARY KEY</span>,
+  name    <span class="fn">VARCHAR</span>(<span class="num">100</span>) <span class="kw">NOT NULL</span>,       <span class="cm">-- required</span>
+  email   <span class="fn">VARCHAR</span>(<span class="num">100</span>) <span class="kw">UNIQUE</span>,          <span class="cm">-- no duplicates</span>
+  salary  <span class="fn">FLOAT</span> <span class="kw">DEFAULT</span> <span class="num">30000</span>,          <span class="cm">-- default value</span>
+  age     <span class="fn">INT</span> <span class="kw">CHECK</span> (age >= <span class="num">18</span>)          <span class="cm">-- must be 18+</span>
+);`
+  },
+  {
+    title: "Subquery",
+    desc: "Use a query inside another query",
+    category: "advanced",
+    keywords: ["subquery", "nested", "inner query", "sub select"],
+    code: `<span class="cm">-- Students older than average age</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">students</span>
+<span class="kw">WHERE</span> age > (<span class="kw">SELECT AVG</span>(age) <span class="kw">FROM</span> <span class="tbl">students</span>);
+
+<span class="cm">-- Students who are enrolled in a course</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">students</span>
+<span class="kw">WHERE</span> id <span class="kw">IN</span> (<span class="kw">SELECT</span> student_id <span class="kw">FROM</span> <span class="tbl">courses</span>);`
+  },
+  {
+    title: "Transactions",
+    desc: "Group multiple operations into one safe unit",
+    category: "advanced",
+    keywords: ["transaction", "commit", "rollback", "begin", "atomic", "safe"],
+    code: `<span class="kw">START TRANSACTION</span>;
+
+<span class="kw">INSERT INTO</span> <span class="tbl">students</span> (name, age) <span class="kw">VALUES</span> (<span class="str">'Alice'</span>, <span class="num">22</span>);
+<span class="kw">INSERT INTO</span> <span class="tbl">students</span> (name, age) <span class="kw">VALUES</span> (<span class="str">'Bob'</span>, <span class="num">24</span>);
+
+<span class="kw">COMMIT</span>;    <span class="cm">-- save all changes</span>
+
+<span class="cm">-- or if something goes wrong:</span>
+<span class="kw">ROLLBACK</span>;  <span class="cm">-- undo everything</span>`
+  },
+  {
+    title: "Views",
+    desc: "Save a query as a virtual reusable table",
+    category: "advanced",
+    keywords: ["view", "virtual table", "save query", "reuse"],
+    code: `<span class="cm">-- Create a view</span>
+<span class="kw">CREATE VIEW</span> <span class="tbl">young_students</span> <span class="kw">AS</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">students</span> <span class="kw">WHERE</span> age < <span class="num">20</span>;
+
+<span class="cm">-- Use it like a normal table</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">young_students</span>;
+
+<span class="cm">-- Drop the view</span>
+<span class="kw">DROP VIEW</span> <span class="tbl">young_students</span>;`
+  },
+  {
+    title: "Indexes",
+    desc: "Speed up queries on large tables",
+    category: "advanced",
+    keywords: ["index", "speed", "performance", "fast", "optimize"],
+    code: `<span class="cm">-- Create an index on name column</span>
+<span class="kw">CREATE INDEX</span> idx_name <span class="kw">ON</span> <span class="tbl">students</span>(name);
+
+<span class="cm">-- Create unique index</span>
+<span class="kw">CREATE UNIQUE INDEX</span> idx_email <span class="kw">ON</span> <span class="tbl">students</span>(email);
+
+<span class="cm">-- Remove index</span>
+<span class="kw">DROP INDEX</span> idx_name <span class="kw">ON</span> <span class="tbl">students</span>;`
+  },
+  {
+    title: "Export to CSV",
+    desc: "Export table data to a CSV file",
+    category: "advanced",
+    keywords: ["export", "csv", "file", "outfile", "download", "save"],
+    code: `<span class="cm">-- Find allowed export folder first</span>
+<span class="kw">SHOW VARIABLES LIKE</span> <span class="str">'secure_file_priv'</span>;
+
+<span class="cm">-- Export to CSV</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">students</span>
+<span class="kw">INTO OUTFILE</span> <span class="str">'C:/ProgramData/MySQL/MySQL Server 8.0/Uploads/output.csv'</span>
+<span class="kw">FIELDS TERMINATED BY</span> <span class="str">','</span>
+<span class="kw">ENCLOSED BY</span> <span class="str">'"'</span>
+<span class="kw">LINES TERMINATED BY</span> <span class="str">'\n'</span>;`
+  },
+  {
+    title: "SHOW — Explore Database",
+    desc: "View databases, tables and their structure",
+    category: "filter",
+    keywords: ["show", "describe", "list", "tables", "databases", "columns", "structure"],
+    code: `<span class="kw">SHOW DATABASES</span>;              <span class="cm">-- list all databases</span>
+<span class="kw">USE</span> <span class="tbl">mydb</span>;                    <span class="cm">-- switch to database</span>
+<span class="kw">SHOW TABLES</span>;                  <span class="cm">-- list all tables</span>
+<span class="kw">DESCRIBE</span> <span class="tbl">students</span>;           <span class="cm">-- show table structure</span>
+<span class="kw">SHOW CREATE TABLE</span> <span class="tbl">students</span>;  <span class="cm">-- show full create statement</span>`
+  }
+];
+
+let activeTag = 'all';
+
+function renderCards(list) {
+  const container = document.getElementById('cards');
+  const noResults = document.getElementById('noResults');
+  const info = document.getElementById('resultsInfo');
+
+  if (list.length === 0) {
+    container.innerHTML = '';
+    noResults.style.display = 'block';
+    info.innerHTML = '';
+    return;
+  }
+
+  noResults.style.display = 'none';
+  info.innerHTML = `Showing <span>${list.length}</span> command${list.length !== 1 ? 's' : ''}`;
+
+  container.innerHTML = list.map((cmd, i) => `
+    <div class="card" id="card-${i}" style="animation-delay: ${i * 0.05}s">
+      <div class="card-header" onclick="toggleCard(${i})">
+        <div class="card-left">
+          <span class="card-badge badge-${cmd.category}">${cmd.category}</span>
+          <div>
+            <div class="card-title">${cmd.title}</div>
+            <div class="card-desc">${cmd.desc}</div>
+          </div>
+        </div>
+        <span class="card-arrow">▼</span>
+      </div>
+      <div class="card-body">
+        <div class="code-block">
+          <div class="code-label">
+            <span>SQL</span>
+            <button class="copy-btn" onclick="copyCode(this, \`${escapeBacktick(cmd.code)}\`)">Copy</button>
+          </div>
+          <pre>${cmd.code}</pre>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function escapeBacktick(str) {
+  return str.replace(/`/g, '\\`').replace(/\$/g, '\\$');
+}
+
+function toggleCard(i) {
+  const card = document.getElementById(`card-${i}`);
+  card.classList.toggle('open');
+}
+
+function copyCode(btn, rawCode) {
+  const plain = rawCode.replace(/<[^>]+>/g, '');
+  navigator.clipboard.writeText(plain).then(() => {
+    btn.textContent = '✓ Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+function filterTag(tag, el) {
+  activeTag = tag;
+  document.querySelectorAll('.tag').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('search').value = '';
+  filterResults('');
+}
+
+function filterResults(query) {
+  const q = query.toLowerCase().trim();
+  let list = commands;
+
+  if (activeTag !== 'all') {
+    list = list.filter(c => c.category === activeTag);
+  }
+
+  if (q) {
+    list = list.filter(c =>
+      c.title.toLowerCase().includes(q) ||
+      c.desc.toLowerCase().includes(q) ||
+      c.keywords.some(k => k.includes(q))
+    );
+  }
+
+  document.getElementById('noQuery').textContent = query;
+  renderCards(list);
+}
+
+document.getElementById('search').addEventListener('input', e => {
+  activeTag = 'all';
+  document.querySelectorAll('.tag').forEach(t => t.classList.remove('active'));
+  document.querySelector('.tag').classList.add('active');
+  filterResults(e.target.value);
+});
+
+// Initial render
+renderCards(commands);
+</script>
+</body>
+</html>
